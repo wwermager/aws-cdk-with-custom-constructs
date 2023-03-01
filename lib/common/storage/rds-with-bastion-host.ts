@@ -73,27 +73,13 @@ export class RdsWithBastionHost extends Construct {
 
 
         /*
-        * Cloudformation does not support adding a key pair to an instance automatically
-        * therefore we use this construct to create a key pair and store it in SSM
+        * Cloudformation does not support creating a key pair automatically
+        * therefore we use this L3 construct to create a key pair and store it in SSM
          */
         this.bastionHostKeyPair = new KeyPair(this, 'rds-bastion-host-key-pair', {
             name: props.bastionhostKeyPairName,
             storePublicKey: true,
         })
-
-        // /*
-        //     * Create a role for the bastion host to assume
-        //  */
-        // const bastionHostRole = new iam.Role(this, 'rds-bastion-host-role', {
-        //     assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-        // });
-        //
-        // /*
-        //     * Grant the bastion host access to the key pair, we will use AWS cli to get this secret
-        //     * and configure our keypair on the bastion host
-        //  */
-        // this.bastionHostKeyPair.grantReadOnPrivateKey(bastionHostRole)
-        // this.bastionHostKeyPair.grantReadOnPublicKey(bastionHostRole);
 
         /*
         * Create a bastion host to access the RDS cluster, this is created in a public subnet
@@ -103,7 +89,6 @@ export class RdsWithBastionHost extends Construct {
             vpcSubnets: {
                 subnetType: ec2.SubnetType.PUBLIC
             },
-            // role: bastionHostRole,
             instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2,ec2.InstanceSize.MICRO),
             machineImage: ec2.MachineImage.latestAmazonLinux({}),
             init: ec2.CloudFormationInit.fromElements(
@@ -111,6 +96,8 @@ export class RdsWithBastionHost extends Construct {
             ),
             keyName: this.bastionHostKeyPair.keyPairName,
         })
+        // Allow SSH connections from anywhere
+        this.dbBastionHost.connections.allowFromAnyIpv4(ec2.Port.tcp(22))
 
         // Allow connections from bastion host to RDS cluster over configured port
         this.dbCluster.connections.allowFrom(this.dbBastionHost.connections, ec2.Port.tcp(props.dbPort))
