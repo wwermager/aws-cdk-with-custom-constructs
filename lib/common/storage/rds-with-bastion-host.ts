@@ -107,7 +107,7 @@ export class RdsWithBastionHost extends Construct {
             instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2,ec2.InstanceSize.MICRO),
             machineImage: ec2.MachineImage.latestAmazonLinux({}),
             init: ec2.CloudFormationInit.fromElements(
-                ec2.InitFile.fromAsset('init.sh', props.bastionHostInitScriptPath),
+                ec2.InitFile.fromAsset('/home/ec2-user/init.sh', props.bastionHostInitScriptPath),
             ),
             keyName: this.bastionHostKeyPair.keyPairName,
         })
