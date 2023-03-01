@@ -3,11 +3,11 @@
 // import * as CdkWithCustomConstructs from '../lib/cdk-with-custom-constructs-stack';
 
 // example test. To run these tests, uncomment this file along with the
-// example resource in lib/cdk-with-custom-constructs-stack.ts
+// example resource in lib/database-stack.ts
 test('SQS Queue Created', () => {
 //   const app = new cdk.App();
 //     // WHEN
-//   const stack = new CdkWithCustomConstructs.CdkWithCustomConstructsStack(app, 'MyTestStack');
+//   const stack = new CdkWithCustomConstructs.DatabaseStack(app, 'MyTestStack');
 //     // THEN
 //   const template = Template.fromStack(stack);
 

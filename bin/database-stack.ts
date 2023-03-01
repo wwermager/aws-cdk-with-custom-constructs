@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { CdkWithCustomConstructsStack } from '../lib/cdk-with-custom-constructs-stack';
+import { DatabaseStack } from '../lib/database-stack';
 
 const app = new cdk.App();
-new CdkWithCustomConstructsStack(app, 'CdkWithCustomConstructsStack', {
+new DatabaseStack(app, 'DatabaseStack', {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */

@@ -6,7 +6,7 @@ import {Construct} from 'constructs';
 import {RdsWithBastionHost} from "./common/storage/rds-with-bastion-host";
 import * as path from "path";
 
-export class CdkWithCustomConstructsStack extends cdk.Stack {
+export class DatabaseStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -15,11 +15,11 @@ export class CdkWithCustomConstructsStack extends cdk.Stack {
     * we can create a VPC with a bastion host and an isolated RDS cluster with this one construct
      */
     new RdsWithBastionHost(this, 'rds-with-bastion-host', {
-        bastionHostInitScriptPath: path.join(__dirname, 'lib', 'common', 'scripts', 'rds-bastion-host-init.sh'),
+        bastionHostInitScriptPath: path.join(__dirname, 'scripts', 'rds-bastion-host-init.sh'),
         bastionhostKeyPairName: 'rds-bastion-host-key-pair',
-        dbInstanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
+        dbInstanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.SMALL),
         dbEngine: rds.DatabaseClusterEngine.auroraMysql({
-            version: rds.AuroraMysqlEngineVersion.VER_3_02_0
+            version: rds.AuroraMysqlEngineVersion.VER_2_07_8
         }),
         dbPort: 3306
     })

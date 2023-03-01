@@ -29,8 +29,30 @@ export class RdsWithBastionHost extends Construct {
 
         /*
         * Create a VPC with a public and private subnet per AZ in deployment region
+        * Because the Vpc construct does not create an isolated subnet by default we are
+        * explicitly definging the subnet configuration
+        *
+        * One of each PUBLIC, PRIVATE, and PRIVATE_ISOLATED subnets will be created per AZ
          */
-        this.dbVpc = new ec2.Vpc(this,'rds-vpc')
+        this.dbVpc = new ec2.Vpc(this,'rds-vpc', {
+            subnetConfiguration: [
+                {
+                    cidrMask: 28,
+                    name: 'public-subnet',
+                    subnetType: ec2.SubnetType.PUBLIC,
+                },
+                {
+                    cidrMask: 28,
+                    name: 'private-with-egress',
+                    subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+                },
+                {
+                    cidrMask: 28,
+                    name: 'rds-private-subnet',
+                    subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+                }
+            ],
+        })
 
         /*
         * Create an isolated RDS cluster
