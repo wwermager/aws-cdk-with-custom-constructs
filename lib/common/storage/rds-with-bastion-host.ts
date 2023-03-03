@@ -110,7 +110,7 @@ export class RdsWithBastionHost extends Construct {
 
     // Allow connections from bastion host to RDS cluster over configured port
     this.dbCluster.connections.allowFrom(
-      this.dbBastionHost.connections,
+      this.dbBastionHost,
       ec2.Port.tcp(props.dbPort)
     );
 
