@@ -64,6 +64,7 @@ export class DatabaseStack extends cdk.Stack {
         },
       }
     );
+    dbInfra.dbCluster.secret?.grantRead(initDbFunction);
 
     const initDbCustomResource = new cr.AwsCustomResource(
       this,
@@ -127,7 +128,7 @@ export class DatabaseStack extends cdk.Stack {
           },
         }
       );
-
+      dbInfra.dbCluster.secret?.grantRead(isolatedApiFunction);
       // Provide network connectivity between lambdas and RDS
       dbInfra.dbCluster.connections.allowFrom(
         isolatedApiFunction,

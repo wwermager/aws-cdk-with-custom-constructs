@@ -27,6 +27,7 @@ TODO: Add architecture diagram
 - nodejs installed
 - npm installed
 - aws-cdk installed
+- esbuild installed OR docker installed and running (CDK will use docker to run esbuild if it's not installed locally)
 
 ## Deploying
 

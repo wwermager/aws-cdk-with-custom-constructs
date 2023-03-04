@@ -1,0 +1,25 @@
+{
+  "extends": "tslint:recommended",
+  "tsconfigFile": "../tsconfig.json",
+  "rules": {
+    "max-line-length": {
+      "options": [120]
+    },
+    "new-parens": true,
+    "no-arg": true,
+    "no-var-requires": false,
+    "no-bitwise": true,
+    "no-conditional-assignment": true,
+    "no-consecutive-blank-lines": false,
+    "no-top-level-statements": false,
+    "no-console": {
+      "severity": "warning",
+      "options": ["log"]
+    }
+  },
+  "jsRules": {
+    "max-line-length": {
+      "options": [120]
+    }
+  }
+}
