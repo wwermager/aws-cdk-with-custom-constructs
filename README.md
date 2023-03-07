@@ -27,7 +27,6 @@ TODO: Add architecture diagram
 - nodejs installed
 - npm installed
 - aws-cdk installed
-- esbuild installed OR docker installed and running (CDK will use docker to run esbuild if it's not installed locally)
 
 ## Deploying
 
@@ -35,7 +34,7 @@ TODO: Add architecture diagram
 npm install
 npm run build
 cdk synth # not required but it will output the CloudFormation template you're about to deploy
-cdk deploy
+cdk deploy # this will synthesize and deploy our stacks as well as bundle up our lambda code assets
 ```
 You should see multiple outputs from this deploytment. These will be used in the commands below:
 
@@ -46,7 +45,7 @@ Outputs are:
 - RDS Secret ID (Arn)
 - API Gateway URL
 
-## Connect to the RDS cluster and Creating a Table
+## Connect to the RDS Cluster
 
 ```bash
 # Get your private key
@@ -66,9 +65,6 @@ ssh -i rds-bastion-host-key-pair.pem ec2-user@<bastion host IP output>
 
 # Connect to mysql server - password and cluster id are available in AWS Secrets Manager
 mysql -h <cluster endpoint output> -D mydb -u myadmin -p
-
-# Create a table if you want to test the Lambda backed APIs
-create table mytable (id int not null auto_increment, name varchar(255), primary key (id));
 ```
 
 ## CRUD

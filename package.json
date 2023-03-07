@@ -5,11 +5,12 @@
     "cdk-with-custom-constructs": "bin/cdk-with-custom-constructs.js"
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
+    "build": "tsc -b",
+    "watch": "tsc -b -w",
     "test": "jest",
     "cdk": "cdk",
-    "clean": "rm -rf node_modules"
+    "clean": "rm -rf node_modules cdk.out lambda/apis/node_modules",
+    "postinstall": "(cd lambda/apis/utils && npm install) && (cd lambda/apis/post && npm install) && (cd lambda/apis/get && npm install) && (cd lambda/apis/put && npm install) && (cd lambda/apis/delete && npm install)"
   },
   "devDependencies": {
     "@types/jest": "^29.4.0",
@@ -32,7 +33,6 @@
     "aws-cdk-lib": "2.66.0",
     "cdk-ec2-key-pair": "^3.3.1",
     "constructs": "^10.0.0",
-    "source-map-support": "^0.5.21",
-    "mysql2": "^3.2.0"
+    "source-map-support": "^0.5.21"
   }
 }

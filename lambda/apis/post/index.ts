@@ -1,19 +1,18 @@
 import { APIGatewayEvent } from "aws-lambda";
+import * as mysql from "mysql2/promise";
+import { getDbSecrets } from "../utils/getSecrets.js";
 
-const mysql = require("mysql2/promise");
-const { getDbSecrets } = require("../utils/getSecrets");
+const dbSecret = await getDbSecrets(process.env.DB_SECRET_NAME || "mysecret");
+
+const mySqlClient = await mysql.createConnection({
+  host: dbSecret.host,
+  user: dbSecret.username,
+  password: dbSecret.password,
+  database: dbSecret.dbname,
+  port: dbSecret.port,
+});
 
 exports.handler = async (event: APIGatewayEvent) => {
-  // TODO move client out of handler
-  const dbSecret = await getDbSecrets(process.env.DB_SECRET_NAME);
-
-  const mySqlClient = await mysql.createConnection({
-    host: dbSecret.host,
-    user: dbSecret.username,
-    password: dbSecret.password,
-    database: dbSecret.dbname,
-    port: dbSecret.port,
-  });
   // Expecting a body with a name property
   if (!event.body || !JSON.parse(event.body).name) {
     return {

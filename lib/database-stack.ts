@@ -47,15 +47,10 @@ export class DatabaseStack extends cdk.Stack {
       this,
       "init-db-lambda-function",
       {
-        entry: path.join(
-          __dirname,
-          "..",
-          "lambda",
-          "apis",
-          "utils",
-          "initializeDB.ts"
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "..", "lambda", "apis", "utils")
         ),
-        handler: "handler",
+        handler: "initializeDB.handler",
         runtime: lambda.Runtime.NODEJS_18_X,
         vpc: dbInfra.dbVpc,
         environment: {
@@ -118,8 +113,10 @@ export class DatabaseStack extends cdk.Stack {
         this,
         `${op}-lambda-function`,
         {
-          entry: path.join(__dirname, "..", "lambda", "apis", op, "index.ts"),
-          handler: "handler",
+          handler: "index.handler",
+          code: lambda.Code.fromAsset(
+            path.join(__dirname, "..", "lambda", "apis", op)
+          ),
           runtime: lambda.Runtime.NODEJS_18_X,
           vpc: dbInfra.dbVpc,
           environment: {
@@ -128,7 +125,10 @@ export class DatabaseStack extends cdk.Stack {
           },
         }
       );
+
+      // Allow lambda function access to read DB secret
       dbInfra.dbCluster.secret?.grantRead(isolatedApiFunction);
+
       // Provide network connectivity between lambdas and RDS
       dbInfra.dbCluster.connections.allowFrom(
         isolatedApiFunction,
