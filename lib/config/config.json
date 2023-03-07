@@ -1,0 +1,11 @@
+{
+  "dbAdminUser" : "dbadmin",
+  "defaultDbName" : "mydb",
+  "dbSecretName" : "my-db-secret",
+  "dbTableName" : "mytable",
+  "dbPort" : 3306,
+  "bastionHostInitScriptPath" : "scripts/rds-bastion-host-init.sh",
+  "bastionhostKeyPairName" : "bastionhost-keypair",
+  "lambdaApisDirectory" : "../lambda/apis",
+  "defaultHandler" : "index.handler"
+}

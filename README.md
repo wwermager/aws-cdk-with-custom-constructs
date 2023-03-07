@@ -6,7 +6,7 @@ architectures with minimal effort in our infrastructure stacks.
 
 ## Architecture
 
-This CDK application creates a custom L3 construct called RdsWithBastionHost. This construct creates the following:
+This CDK application creates a custom L3 construct called AuroraMysqlWithBastionHost. This construct creates the following:
 
 - VPC with public, private and isolated subnets
 - RDS Aurara MySQL cluster
@@ -14,7 +14,7 @@ This CDK application creates a custom L3 construct called RdsWithBastionHost. Th
 - Keypair to be used for SSH access to the bastion host (this uses an L3 construct from npm package cdk-ec2-key-pair)
 - Networking config to allow the bastion host to connect to the RDS cluster
 
-The DataStack class deploys a cloudformation stack which deploys the RdsWithBastionHost construct as well as a lambda
+The DataStack class deploys a cloudformation stack which deploys the AuroraMysqlWithBastionHost construct as well as a lambda
 and corresponding API Gateway resources for each of the CRUD operations.
 
 Additionally, it deploys a host of other abstracted resources since it usese L2 constructs from the CDK.
@@ -27,6 +27,12 @@ TODO: Add architecture diagram
 - nodejs installed
 - npm installed
 - aws-cdk installed
+- env vars set for your AWS account and region
+
+```bash
+export AWS_REGION=us-east-2 # use your preferred region here
+export AWS_ACCOUNT=111111111111 # use your AWS account number here
+```
 
 ## Deploying
 

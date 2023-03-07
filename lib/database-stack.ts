@@ -1,106 +1,73 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as rds from "aws-cdk-lib/aws-rds";
-import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as iam from "aws-cdk-lib/aws-iam";
-import * as cr from "aws-cdk-lib/custom-resources";
 
 import { Construct } from "constructs";
-import { RdsWithBastionHost } from "./common/storage/rds-with-bastion-host";
+import { AuroraMysqlWithBastionHost } from "./common/storage/aurora-mysql-with-bastion-host";
 import * as path from "path";
-import { IsolatedFunction } from "./common/lambda/isolated-function";
-import { randomUUID } from "crypto";
+import { DatabaseVpc } from "./common/network/database-vpc";
+import { AppConfig } from "./config/app-config";
+import * as sm from "aws-cdk-lib/aws-secretsmanager";
+import { MysqlSetup } from "./common/lambda/mysql-setup";
+import assert = require("assert");
 
+export interface DatabaseStackProps extends cdk.StackProps {
+  // VPC with private isolated subnet configured
+  vpc: DatabaseVpc;
+  // Application configuration
+  config: AppConfig;
+}
+
+/*
+ * Here we are deploying our custom construct that deploys and RDS Cluster and bastion host. Additionally, we leverage
+ * the AwsCustomResource construct to invoke a lambda function we deploy that automates the creation of a table and
+ * populating it with data.
+ */
 export class DatabaseStack extends cdk.Stack {
-  readonly dbInfra: RdsWithBastionHost;
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  readonly rdsConnections: ec2.Connections;
+  readonly dbSecret: sm.ISecret;
+  constructor(scope: Construct, id: string, props: DatabaseStackProps) {
     super(scope, id, props);
 
     /*
-     * Using the custom construct we created in lib/common/storage/rds-with-bastion-host.ts
-     * we can create a VPC with a bastion host and an isolated RDS cluster with this one construct
+     * Deploy an RDS cluster with a bastion host to allow us to connect to the database from our local machine using
+     * our custom construct.
      */
-    this.dbInfra = new RdsWithBastionHost(this, "rds-with-bastion-host", {
-      bastionHostInitScriptPath: path.join(
-        __dirname,
-        "scripts",
-        "rds-bastion-host-init.sh"
-      ),
-      bastionhostKeyPairName: "rds-bastion-host-key-pair",
-      dbInstanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.T2,
-        ec2.InstanceSize.SMALL
-      ),
-      dbEngine: rds.DatabaseClusterEngine.auroraMysql({
-        version: rds.AuroraMysqlEngineVersion.VER_2_07_8,
-      }),
-      dbAdminUser: "myadmin",
-      defaultDbName: "mydb",
-      dbPort: 3306,
-    });
-
-    /*
-     * Deploy and invoke a lambda function that initializes the database by creating a table and inserting 10 rows
-     * we'll invoke it with a CustomResource in the next step
-     */
-    const initDbFunction = new IsolatedFunction(
+    const dbInfra = new AuroraMysqlWithBastionHost(
       this,
-      "init-db-lambda-function",
+      "rds-with-bastion-host",
       {
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "..", "lambda", "apis", "utils")
+        dbVpc: props.vpc,
+        bastionHostInitScriptPath: path.join(
+          __dirname,
+          props.config.bastionHostInitScriptPath
         ),
-        handler: "initializeDB.handler",
-        runtime: lambda.Runtime.NODEJS_18_X,
-        vpc: this.dbInfra.dbVpc,
-        environment: {
-          DB_SECRET_NAME: this.dbInfra.dbCluster.secret?.secretName || "",
-          TABLE_NAME: "mytable",
-        },
+        bastionhostKeyPairName: props.config.bastionhostKeyPairName,
+        dbAdminUser: props.config.dbAdminUser,
+        defaultDbName: props.config.defaultDbName,
+        dbSecretName: props.config.dbSecretName,
+        dbPort: props.config.dbPort,
       }
     );
-    this.dbInfra.dbCluster.secret?.grantRead(initDbFunction);
+
+    assert(dbInfra.dbCluster.secret, "Secret was not created for DB Cluster");
+
+    this.dbSecret = dbInfra.dbCluster.secret;
+    this.rdsConnections = dbInfra.dbCluster.connections;
 
     /*
-     * AwsCustomResource is useful for doing things with the AWS APIs that are not yet available in Cloudformation or
-     * CDK. Anything you might be able to do with the AWS SDK can likely be done with a custom resource. For example, in
-     * this case we are using it to invoke a lambda function which connects to our RDS cluster, creates a table, and populates
-     * some data.
+     * Deploy a lambda function that will be invoked by the AwsCustomResource construct to create a table
+     * and populate it with data.
      */
-    const initDbCustomResource = new cr.AwsCustomResource(
-      this,
-      "init-db-invoker",
-      {
-        onUpdate: {
-          physicalResourceId: cr.PhysicalResourceId.of(
-            "init-db-custom-resource-" + randomUUID()
-          ),
-          service: "Lambda",
-          action: "invoke",
-          parameters: {
-            FunctionName: `${initDbFunction.functionName}`,
-            Payload: "",
-          },
-        },
-        // Give resource access to invoke lambda function
-        policy: cr.AwsCustomResourcePolicy.fromStatements([
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ["lambda:InvokeFunction"],
-            resources: [initDbFunction.functionArn],
-          }),
-        ]),
-      }
-    );
-
-    // We need to ensure that our lambda function and db cluster is deployed before we invoke the lambda function
-    initDbCustomResource.node.addDependency(initDbFunction);
-    initDbCustomResource.node.addDependency(this.dbInfra.dbCluster);
-
-    // Provide network connectivity between lambda and RDS
-    this.dbInfra.dbCluster.connections.allowFrom(
-      initDbFunction,
-      ec2.Port.tcp(this.dbInfra.dbCluster.clusterEndpoint.port)
-    );
+    new MysqlSetup(this, "mysql-setup", {
+      vpc: props.vpc,
+      dbCluster: dbInfra.dbCluster,
+      lambdaDirectory: path.join(
+        __dirname,
+        props.config.lambdaApisDirectory,
+        "utils"
+      ),
+      defaultHandler: props.config.defaultHandler,
+      dbTableName: props.config.dbTableName,
+    });
   }
 }

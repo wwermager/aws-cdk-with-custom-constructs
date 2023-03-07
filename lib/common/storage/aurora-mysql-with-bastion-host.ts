@@ -4,66 +4,46 @@ import { KeyPair } from "cdk-ec2-key-pair";
 
 import { Construct } from "constructs";
 import { CfnOutput, RemovalPolicy } from "aws-cdk-lib";
+import { DatabaseVpc } from "../network/database-vpc";
 
 export interface RdsWithBastionProps {
+  // Expects a VPC created with the DatabaseVpc construct
+  readonly dbVpc: DatabaseVpc;
+  // Path to a shell script that will be executed on the bastion host
   readonly bastionHostInitScriptPath: string;
+  // Name of the key pair that will be used to access the bastion host
   readonly bastionhostKeyPairName: string;
-  readonly dbInstanceType: ec2.InstanceType;
+  // Port that the RDS cluster will listen on
   readonly dbPort: number;
-  readonly dbEngine: rds.IClusterEngine;
+  // Username of the admin user that will be created on the RDS cluster
   readonly dbAdminUser: string;
+  // Name of the default database that will be created on the RDS cluster
   readonly defaultDbName: string;
+  // Name of the secret that will be created in Secrets Manager containing RDS credentials and connection information
+  readonly dbSecretName: string;
 }
 /*
- * This is a construct (pattern) that creates a VPC with a bastion host and an isolated RDS cluster
- * The bastion host is the only way to access the RDS cluster, and the DatabaseCluster construct enforces
- * a minimum of 2 instances in the cluster for availability
+ * The purpose of this construct is to simplify the creation of a bastion host and RDS cluster. This will allow consumers
+ * to create a bastion host, RDS Cluster, and the network connections between them with a single declaration.
+ *
  */
-export class RdsWithBastionHost extends Construct {
-  readonly dbVpc: ec2.Vpc; // allow this to be consumed, so we can add other resources to the VPC
-  readonly dbBastionHost: ec2.Instance; // single entry point to the RDS cluster
-  readonly dbCluster: rds.DatabaseCluster; // isolated RDS cluster
-  readonly bastionHostKeyPair: KeyPair; // allow this to be consumed, so we can allow iam users in other stacks to access the keypair
+export class AuroraMysqlWithBastionHost extends Construct {
+  // Expose this class member as readonly so that other stacks can use it in their definitions
+  readonly dbCluster: rds.DatabaseCluster;
   constructor(scope: Construct, id: string, props: RdsWithBastionProps) {
     super(scope, id);
 
-    /*
-     * Create a VPC with a public and private subnet per AZ in deployment region
-     * Because the Vpc construct does not create an isolated subnet by default we are
-     * explicitly definging the subnet configuration
-     *
-     * One of each PUBLIC, PRIVATE, and PRIVATE_ISOLATED subnets will be created per AZ
-     */
-    this.dbVpc = new ec2.Vpc(this, "rds-vpc", {
-      subnetConfiguration: [
-        {
-          cidrMask: 28,
-          name: "public-subnet",
-          subnetType: ec2.SubnetType.PUBLIC,
-        },
-        {
-          cidrMask: 28,
-          name: "private-with-egress",
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        },
-        {
-          cidrMask: 28,
-          name: "rds-private-subnet",
-          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-        },
-      ],
-    });
-
-    /*
-     * Create an isolated RDS cluster
-     * TODO: Create credential and database
-     */
     this.dbCluster = new rds.DatabaseCluster(this, "rds-database-cluster", {
-      engine: props.dbEngine,
+      engine: rds.DatabaseClusterEngine.auroraMysql({
+        version: rds.AuroraMysqlEngineVersion.VER_2_07_8,
+      }),
       defaultDatabaseName: props.defaultDbName,
       instanceProps: {
-        vpc: this.dbVpc,
-        instanceType: props.dbInstanceType,
+        vpc: props.dbVpc,
+        instanceType: ec2.InstanceType.of(
+          ec2.InstanceClass.T2,
+          ec2.InstanceSize.SMALL
+        ),
         vpcSubnets: {
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
         },
@@ -71,14 +51,16 @@ export class RdsWithBastionHost extends Construct {
       port: props.dbPort,
       instances: 2,
       removalPolicy: RemovalPolicy.DESTROY,
-      credentials: rds.Credentials.fromGeneratedSecret(props.dbAdminUser),
+      credentials: rds.Credentials.fromGeneratedSecret(props.dbAdminUser, {
+        secretName: props.dbSecretName,
+      }),
     });
 
     /*
      * Cloudformation does not support creating a key pair automatically
      * therefore we use this L3 construct to create a key pair and store it in SSM
      */
-    this.bastionHostKeyPair = new KeyPair(this, "rds-bastion-host-key-pair", {
+    const bastionHostKeypair = new KeyPair(this, "rds-bastion-host-key-pair", {
       name: props.bastionhostKeyPairName,
       storePublicKey: true,
     });
@@ -86,8 +68,8 @@ export class RdsWithBastionHost extends Construct {
     /*
      * Create a bastion host to access the RDS cluster, this is created in a public subnet
      */
-    this.dbBastionHost = new ec2.Instance(this, "rds-bastion-host", {
-      vpc: this.dbVpc,
+    const dbBastionHost = new ec2.Instance(this, "rds-bastion-host", {
+      vpc: props.dbVpc,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PUBLIC,
       },
@@ -102,15 +84,15 @@ export class RdsWithBastionHost extends Construct {
           props.bastionHostInitScriptPath
         )
       ),
-      keyName: this.bastionHostKeyPair.keyPairName,
+      keyName: bastionHostKeypair.keyPairName,
     });
 
     // Allow SSH connections from anywhere
-    this.dbBastionHost.connections.allowFromAnyIpv4(ec2.Port.tcp(22));
+    dbBastionHost.connections.allowFromAnyIpv4(ec2.Port.tcp(22));
 
     // Allow connections from bastion host to RDS cluster over configured port
     this.dbCluster.connections.allowFrom(
-      this.dbBastionHost,
+      dbBastionHost,
       ec2.Port.tcp(props.dbPort)
     );
 
@@ -118,10 +100,10 @@ export class RdsWithBastionHost extends Construct {
      * Output all the details we'll need to connect to the RDS cluster
      */
     new CfnOutput(this, "keypair-private-key-secret-id", {
-      value: this.bastionHostKeyPair.privateKeyArn,
+      value: bastionHostKeypair.privateKeyArn,
     });
     new CfnOutput(this, "bastion-host-public-ip", {
-      value: this.dbBastionHost.instancePublicIp,
+      value: dbBastionHost.instancePublicIp,
     });
     new CfnOutput(this, "rds-cluster-endpoint", {
       value: this.dbCluster.clusterEndpoint.hostname,
