@@ -19,7 +19,7 @@ The DataStack class deploys a cloudformation stack which deploys the AuroraMysql
 MysqlSetup custom construct that leverages lambda and custom resources to create a table and populate it with data in
 our RDS cluster.
 
-#### TODO: Add architecture diagram
+![Architecture Diagram](./ExampleCDKProject_Arch.png)
 
 ## Prerequisites
 
