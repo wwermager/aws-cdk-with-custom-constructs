@@ -6,22 +6,16 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
 import { DatabaseVpc } from "./common/network/database-vpc";
 import { AppConfig } from "./config/app-config";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as sm from "aws-cdk-lib/aws-secretsmanager";
+import { AuroraMysqlWithBastionHost } from "./common/storage/aurora-mysql-with-bastion-host";
 
 export interface ApiStackProps extends cdk.StackProps {
-  // VPC that RDS Cluster will be deployed in
-  vpc: DatabaseVpc;
+  // Database Infrastructure - gives us reference to vpc, security groups, and secret
+  dbInfra: AuroraMysqlWithBastionHost;
   // Application configuration
   config: AppConfig;
-  // RDS Cluster Secret
-  rdsSecret: sm.ISecret;
-  // Connections object for RDS Cluster - used to add rules to the security group
-  rdsConnections: ec2.Connections;
 }
 /*
  * Here we are deploying a REST API with 4 endpoints (POST, GET, PUT, DELETE) and a lambda function for each endpoint.
- * Additionally, we're using the secret and connections details passed to this class to configure access to RDS
  */
 export class ApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
@@ -35,20 +29,28 @@ export class ApiStack extends cdk.Stack {
       .addResource("name")
       .addResource("{id}");
 
+    /*
+     * Currently deploying the entire lambda/apis directory as a single asset for each lambda function. This was due to an
+     * issue where only the init function in the database stack was getting its dependencies bundled even though the api/ops
+     * directories included their own node_modules. The ideal solution would be to leverage the NodejsFunction construct
+     */
     CRUD_OPERATIONS.forEach((operation) => {
       // Create a new lambda function for each operation
       const isolatedApiFunction = new IsolatedFunction(
         this,
         `${operation}-lambda-function`,
         {
-          handler: props.config.defaultHandler,
+          handler: `${operation}/${props.config.defaultHandler}`,
           code: lambda.Code.fromAsset(
-            path.join(__dirname, props.config.lambdaApisDirectory, operation)
+            path.join(__dirname, props.config.lambdaApisDirectory)
           ),
+          securityGroups: [props.dbInfra.securityGroup],
           runtime: lambda.Runtime.NODEJS_18_X,
-          vpc: props.vpc,
+          vpc: props.dbInfra.dbCluster.vpc as DatabaseVpc,
           environment: {
-            DB_SECRET_NAME: props.config.dbSecretName,
+            DB_SECRET_NAME:
+              props.dbInfra.dbCluster.secret?.secretName ||
+              "SECRET_NAME_NOT_FOUND",
             TABLE_NAME: props.config.dbTableName,
           },
         }
@@ -61,11 +63,7 @@ export class ApiStack extends cdk.Stack {
       );
 
       // Give lambda access to the RDS Cluster secret and allow it to connect to the database
-      props.rdsSecret.grantRead(isolatedApiFunction);
-      isolatedApiFunction.connections.allowTo(
-        props.rdsConnections,
-        ec2.Port.tcp(props.config.dbPort)
-      );
+      props.dbInfra.dbCluster.secret?.grantRead(isolatedApiFunction);
     });
   }
 }

@@ -5,6 +5,7 @@ import {
 
 const smClient = new SecretsManagerClient({
   region: process?.env.AWS_REGION,
+  endpoint: process?.env.AWS_ENDPOINT,
 });
 
 export const getDbSecrets = async (secretName: string) => {

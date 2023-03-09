@@ -9,7 +9,10 @@
     "watch": "tsc -b -w",
     "test": "jest",
     "cdk": "cdk",
-    "clean": "find . -name \"node_modules\" -type d -exec rm -r \"{}\" \\; 2>/dev/null && find . -type f ! -path \"*node_modules*\" ! -path \"*jest.config.js\" \\( -name \"*.d.ts\" -o -name \"*.js\" \\) -exec rm -r \"{}\" \\; 2>/dev/null",
+    "cleancdk": "rm -rf cdk.out" ,
+    "cleannode": "find . -name \"node_modules\" -type d -exec rm -r \"{}\" \\; 2>/dev/null" ,
+    "cleants": "find . -type f ! -path \"*jest.config.js\" \\( -name \"*.d.ts\" -o -name \"*.js\" \\) -exec rm -r \"{}\" \\; 2>/dev/null",
+    "clean": "npm run cleannode && npm run cleancdk && npm run cleants",
     "postinstall": "(cd lambda/apis/utils && npm install) && (cd lambda/apis/post && npm install) && (cd lambda/apis/get && npm install) && (cd lambda/apis/put && npm install) && (cd lambda/apis/delete && npm install)"
   },
   "devDependencies": {

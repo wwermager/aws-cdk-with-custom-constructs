@@ -12,9 +12,14 @@ const mySqlClient = await mysql.createConnection({
   port: dbSecret.port,
 });
 
-exports.handler = async (event: APIGatewayEvent) => {
+export const handler = async (event: APIGatewayEvent) => {
+  // This functioon will only be invoked if the user provided path matches <api>/name/{id}
+  // ["","name","<ID>"]
+  const path = event.path.split("/");
+  const id = path[2];
+
   // Expecting a body with a name property
-  if (!event.body || JSON.parse(event.body).name) {
+  if (!event.body || !JSON.parse(event.body).name) {
     return {
       statusCode: 400,
       body: JSON.stringify("missing body or name property"),
@@ -22,11 +27,12 @@ exports.handler = async (event: APIGatewayEvent) => {
   }
 
   const { name } = JSON.parse(event.body);
-  const queryText = `INSERT INTO ${process.env.TABLE_NAME} (name) VALUES ('${name}') ON DUPLICATE KEY UPDATE name='${name}'`;
-  const [rows, fields] = await mySqlClient.execute(queryText);
+  const queryText = `INSERT INTO ${process.env.TABLE_NAME} (id,name) VALUES (${id},'${name}') ON DUPLICATE KEY UPDATE name='${name}'`;
+  console.info(queryText);
+  const [rows]: any = await mySqlClient.execute(queryText);
 
   return {
     statusCode: 200,
-    body: JSON.stringify(rows),
+    body: JSON.stringify(rows[0]),
   };
 };

@@ -11,16 +11,14 @@ export interface IsolatedFunctionProps extends lambda.FunctionProps {
 
 /*
  * Customizing the lambda.Function construct to enforce that any function we deploy is deployed in our custom VPC
- * and that it is in a private subnet.
+ * by default this is placed in a private subnet.
  */
 export class IsolatedFunction extends lambda.Function {
   constructor(scope: Construct, id: string, props: IsolatedFunctionProps) {
     super(scope, id, {
       ...props,
       vpc: props.vpc,
-      allowPublicSubnet: false,
       timeout: cdk.Duration.seconds(30),
-      allowAllOutbound: false,
     });
   }
 }

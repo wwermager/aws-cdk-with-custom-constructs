@@ -13,21 +13,15 @@ const mySqlClient = await mysql.createConnection({
 });
 
 export const handler = async (event: APIGatewayEvent) => {
-  console.log(event);
-
+  // This functioon will only be invoked if the user provided path matches <api>/name/{id}
+  // ["","name","<ID>"]
   const path = event.path.split("/");
-
-  if (!path[1]) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify("No id provided"),
-    };
-  }
-  const queryText = `DELETE FROM ${process.env.TABLE_NAME} WHERE id = '${path[1]}'`;
-  const [rows, fields] = await mySqlClient.execute(queryText);
+  const queryText = `DELETE FROM ${process.env.TABLE_NAME} WHERE id = '${path[2]}'`;
+  console.info(queryText);
+  const [rows]: any = await mySqlClient.execute(queryText);
 
   return {
     statusCode: 200,
-    body: JSON.stringify(rows),
+    body: JSON.stringify(rows[0]),
   };
 };

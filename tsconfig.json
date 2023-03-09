@@ -2,10 +2,6 @@
   "files": [],
   "references": [
     {"path": "./lib"},
-    {"path": "./lambda/apis/utils"},
-    {"path": "./lambda/apis/post"},
-    {"path": "./lambda/apis/get"},
-    {"path": "./lambda/apis/put"},
-    {"path": "./lambda/apis/delete"}
+    {"path": "./lambda/apis"}
   ],
 }

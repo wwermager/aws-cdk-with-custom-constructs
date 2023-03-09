@@ -11,6 +11,7 @@ const mySqlClient = await mysql.createConnection({
   database: dbSecret.dbname,
   port: dbSecret.port,
 });
+
 export const handler = async (event: any) => {
   const createQueryText = `CREATE TABLE IF NOT EXISTS ${process.env.TABLE_NAME} (id INT NOT NULL AUTO_INCREMENT, name VARCHAR(255), PRIMARY KEY (id))`;
   console.info(createQueryText);
@@ -25,7 +26,8 @@ export const handler = async (event: any) => {
   }
 
   const queryText = `SELECT * FROM ${process.env.TABLE_NAME}`;
-  const [rows, fields] = await mySqlClient.execute(queryText);
+  console.info(queryText);
+  const [rows] = await mySqlClient.execute(queryText);
 
   return {
     statusCode: 200,

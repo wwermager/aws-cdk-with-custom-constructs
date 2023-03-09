@@ -1,18 +1,15 @@
 import { IsolatedFunction } from "./isolated-function";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as cr from "aws-cdk-lib/custom-resources";
-import { randomUUID } from "crypto";
 import * as iam from "aws-cdk-lib/aws-iam";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { DatabaseVpc } from "../network/database-vpc";
-import * as rds from "aws-cdk-lib/aws-rds";
 import { Construct } from "constructs";
+import { AuroraMysqlWithBastionHost } from "../storage/aurora-mysql-with-bastion-host";
+import assert = require("assert");
 
 export interface MysqlInitializationFunctionProps {
   // Datbase cluster to initialize
-  readonly dbCluster: rds.DatabaseCluster;
-  // Expects a VPC that has been created with the DatabaseVpc construct
-  readonly vpc: DatabaseVpc;
+  readonly dbInfra: AuroraMysqlWithBastionHost;
   // Directory containing the lambda function code
   readonly lambdaDirectory: string;
   // Name of the lambda function handler
@@ -42,14 +39,21 @@ export class MysqlSetup extends Construct {
         code: lambda.Code.fromAsset(props.lambdaDirectory),
         handler: props.defaultHandler,
         runtime: lambda.Runtime.NODEJS_18_X,
-        vpc: props.vpc,
+        vpc: props.dbInfra.dbCluster.vpc as DatabaseVpc,
+        securityGroups: [props.dbInfra.securityGroup],
         environment: {
-          DB_SECRET_NAME: props.dbCluster.secret?.secretName || "",
+          DB_SECRET_NAME: props.dbInfra.dbCluster.secret?.secretArn || "",
           TABLE_NAME: props.dbTableName,
         },
       }
     );
-    props.dbCluster.secret?.grantRead(initDbFunction);
+
+    assert(
+      props.dbInfra.dbCluster.secret,
+      "Secret was not created for DB Cluster"
+    );
+
+    props.dbInfra.dbCluster.secret.grantRead(initDbFunction);
 
     /*
      * AwsCustomResource is useful for doing things with the AWS APIs that are not yet available in Cloudformation or
@@ -57,14 +61,13 @@ export class MysqlSetup extends Construct {
      * this case we are using it to invoke a lambda function which connects to our RDS cluster, creates a table, and populates
      * some data.
      */
-
     const initDbCustomResource = new cr.AwsCustomResource(
       this,
       "init-db-invoker",
       {
         onUpdate: {
           physicalResourceId: cr.PhysicalResourceId.of(
-            "init-db-custom-resource-" + randomUUID()
+            "init-db-custom-resource" // If we were to make this unique on each deployment it would run everytime (e.g. append a randomUUID)
           ),
           service: "Lambda",
           action: "invoke",
@@ -85,13 +88,7 @@ export class MysqlSetup extends Construct {
     );
 
     // In the case of custom resources, we need to explicitly define the AWS resources our function is dependent on
+    initDbCustomResource.node.addDependency(props.dbInfra);
     initDbCustomResource.node.addDependency(initDbFunction);
-    initDbCustomResource.node.addDependency(props.dbCluster);
-
-    // Provide network connectivity between our initialization lambda function and the RDS cluster
-    initDbFunction.connections.allowFrom(
-      props.dbCluster.connections,
-      ec2.Port.tcp(props.dbCluster.clusterEndpoint.port)
-    );
   }
 }
