@@ -30,7 +30,8 @@
     "@aws-sdk/client-secrets-manager": "^3.188.0",
     "@aws-sdk/types": "^3.188.0",
     "aws-lambda": "^1.0.7",
-    "@types/aws-lambda": "^8.10.111"
+    "@types/aws-lambda": "^8.10.111",
+    "@aws-sdk/client-ec2": "^3.288.0"
   },
   "dependencies": {
     "aws-cdk-lib": "2.66.0",

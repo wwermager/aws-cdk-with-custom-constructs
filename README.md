@@ -39,6 +39,7 @@ export AWS_ACCOUNT=111111111111 # use your AWS account number here
 ```
 npm install
 npm run build # important: this will build our lambda code assets
+jest # optional: run unit tests
 cdk synth # not required but it will output the CloudFormation template you're about to deploy
 cdk deploy --all # this will synthesize and deploy our stacks as well as bundle up our lambda code assets
 ```
@@ -125,4 +126,5 @@ application. Ensure you destroy the resources when you're done.
 
 - leverage the NodejsFunction construct to deploy our lambda code
   - would easily solve the issue of us bundling all lambdas in our asset and instead deploy them individually
+- more unit tests
 - recreate this example with CDK for Terraform (CDKtf)
