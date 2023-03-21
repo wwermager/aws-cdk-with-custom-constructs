@@ -127,4 +127,5 @@ application. Ensure you destroy the resources when you're done.
 - leverage the NodejsFunction construct to deploy our lambda code
   - would easily solve the issue of us bundling all lambdas in our asset and instead deploy them individually
 - more unit tests
+- turborepo or some other tool to manage monorepo
 - recreate this example with CDK for Terraform (CDKtf)

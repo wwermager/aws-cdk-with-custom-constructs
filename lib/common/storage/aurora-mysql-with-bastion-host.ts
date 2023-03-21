@@ -1,6 +1,5 @@
 import * as rds from "aws-cdk-lib/aws-rds";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
 import { KeyPair } from "cdk-ec2-key-pair";
 
 import { Construct } from "constructs";
@@ -29,14 +28,14 @@ export interface RdsWithBastionProps {
 export class AuroraMysqlWithBastionHost extends Construct {
   // Expose this class member as readonly so that other stacks can use it in their definitions
   readonly dbCluster: rds.DatabaseCluster;
-  readonly securityGroup: SecurityGroup;
+  readonly securityGroup: ec2.SecurityGroup;
   constructor(scope: Construct, id: string, props: RdsWithBastionProps) {
     super(scope, id);
 
     const vpc = new DatabaseVpc(this, "rds-vpc");
 
     // Creating a security group explicitly so that we can disable egress by default
-    this.securityGroup = new SecurityGroup(this, "rds-security-group", {
+    this.securityGroup = new ec2.SecurityGroup(this, "rds-security-group", {
       vpc,
       allowAllOutbound: false,
     });
