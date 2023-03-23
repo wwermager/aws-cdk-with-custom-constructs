@@ -1,7 +1,7 @@
 # CDK Example Consuming and Building Custom Constructs
 
-This is an example CDK app for the purposes of demonstrating how to write, consume, and deploy custom constructs.
-Additionally, this example is to highlight the power of the abstractions provided by the CDK, allowing us to deploy 
+This is an example AWS CDK app for the purposes of demonstrating how to write, consume, and deploy custom constructs.
+Additionally, this example highlights the power of the abstractions provided by the CDK, allowing us to deploy 
 complex architecture with minimal effort in our infrastructure stacks.
 
 ## Architecture
