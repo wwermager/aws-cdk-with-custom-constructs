@@ -124,6 +124,7 @@ application. Ensure you destroy the resources when you're done.
 
 ## What's Next
 
+- make use of free tier resources (get rid of auto created NATGateway, move lambdas to isolated subnet, parameterize creating single non-Aurora DB Instance)
 - leverage the NodejsFunction construct to deploy our lambda code
   - would easily solve the issue of us bundling all lambdas in our asset and instead deploy them individually
 - more unit tests
